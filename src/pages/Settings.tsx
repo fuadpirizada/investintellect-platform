@@ -9,7 +9,8 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { User, Bell, Shield, CreditCard, Settings as SettingsIcon, Smartphone, Moon } from "lucide-react";
+import { User, Bell, Shield, CreditCard, Settings as SettingsIcon, Smartphone, Moon, Plus } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 const Settings = () => {
   const [darkMode, setDarkMode] = useState(false);
