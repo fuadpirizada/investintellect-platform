@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { 
   BarChart3, 
   Home, 
@@ -29,6 +29,7 @@ import {
 
 export function AppSidebar() {
   const [expanded, setExpanded] = useState(true);
+  const location = useLocation();
 
   const mainMenuItems = [
     {
@@ -76,8 +77,12 @@ export function AppSidebar() {
     },
   ];
 
+  const checkActive = (url: string) => {
+    return location.pathname === url;
+  };
+
   return (
-    <Sidebar className="border-r">
+    <Sidebar defaultExpanded={expanded} onExpandedChange={setExpanded} className="border-r">
       <SidebarHeader>
         <div className="flex items-center px-2 py-4">
           <div className={cn("transition-all flex items-center", expanded ? "justify-between w-full" : "justify-center")}>
@@ -101,7 +106,7 @@ export function AppSidebar() {
             <SidebarMenu>
               {mainMenuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
+                  <SidebarMenuButton asChild isActive={checkActive(item.url)}>
                     <Link to={item.url} className="flex items-center">
                       <item.icon className="h-5 w-5 mr-3" />
                       <span>{item.title}</span>
@@ -119,7 +124,7 @@ export function AppSidebar() {
             <SidebarMenu>
               {additionalMenuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
+                  <SidebarMenuButton asChild isActive={checkActive(item.url)}>
                     <Link to={item.url} className="flex items-center">
                       <item.icon className="h-5 w-5 mr-3" />
                       <span>{item.title}</span>
