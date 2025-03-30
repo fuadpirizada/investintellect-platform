@@ -1,4 +1,5 @@
 
+// Add extraInfo prop to fix the type error
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ArrowDown, ArrowUp, Star } from "lucide-react";
@@ -12,6 +13,7 @@ interface StockCardProps {
   changePercent: number;
   inWatchlist?: boolean;
   onToggleWatchlist?: () => void;
+  extraInfo?: string; // Adding extraInfo prop
 }
 
 export function StockCard({
@@ -22,6 +24,7 @@ export function StockCard({
   changePercent,
   inWatchlist = false,
   onToggleWatchlist,
+  extraInfo,
 }: StockCardProps) {
   const isPositive = change >= 0;
 
@@ -62,6 +65,7 @@ export function StockCard({
             </div>
           </div>
         </div>
+        {extraInfo && <div className="text-sm text-muted-foreground mt-2">{extraInfo}</div>}
       </CardContent>
     </Card>
   );

@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { StockChart } from "@/components/shared/StockChart";
 import { AIAnalysisCard } from "@/components/shared/AIAnalysisCard";
@@ -21,81 +21,35 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-// Mock stock data
-const mockStockData = {
-  symbol: "AAPL",
-  companyName: "Apple Inc.",
-  currentPrice: 182.52,
-  change: 3.28,
-  changePercent: 1.83,
-  recommendation: "buy" as const,
-  confidenceScore: 78,
-  shortTermOutlook: "Apple is expected to show steady growth in the short term with the upcoming product launch cycle potentially acting as a catalyst.",
-  longTermOutlook: "The company remains well-positioned for long-term success with its ecosystem strategy, services growth, and robust R&D investments in AI and AR technologies.",
-  riskLevel: "low" as const,
-  keyFactors: [
-    "Strong services revenue growth",
-    "Expanding margins in core business",
-    "Upcoming iPhone refresh cycle",
-    "Potential regulatory challenges",
-    "Competition in wearables market"
-  ]
-};
+// Import API services
+import { 
+  fetchStockQuote, 
+  fetchHistoricalData, 
+  searchStocks, 
+  fetchMarketNews 
+} from "@/services/yahooFinanceService";
 
-// Mock financial data
-const financialData = [
-  { metric: "Market Cap", value: "$2.83T" },
-  { metric: "P/E Ratio", value: "30.42" },
-  { metric: "Revenue (TTM)", value: "$383.29B" },
-  { metric: "EPS", value: "$6.14" },
-  { metric: "Dividend Yield", value: "0.51%" },
-  { metric: "52-Week High", value: "$196.18" },
-  { metric: "52-Week Low", value: "$143.74" },
-  { metric: "Average Volume", value: "57.12M" },
-];
+import { 
+  fetchTechnicalIndicators 
+} from "@/services/alphaVantageService";
 
-// Mock news data
-const newsItems = [
-  {
-    title: "Apple Unveils New MacBook Pro with Enhanced AI Features",
-    source: "TechCrunch",
-    time: "1 day ago",
-    summary: "Apple announced its latest MacBook Pro lineup featuring enhanced AI capabilities and improved performance with the new M3 chip architecture.",
-    sentiment: "positive" as const,
-    category: "Product Launch",
-    relatedSymbols: ["AAPL"],
-    imageUrl: "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=800&q=80"
-  },
-  {
-    title: "Apple Services Growth Accelerates in Emerging Markets",
-    source: "Wall Street Journal",
-    time: "3 days ago",
-    summary: "Apple's services segment shows strong growth momentum in emerging markets, particularly in India and Southeast Asia, offsetting slowing hardware sales.",
-    sentiment: "positive" as const,
-    category: "Business",
-    relatedSymbols: ["AAPL"],
-    imageUrl: "https://images.unsplash.com/photo-1556656793-08538906a9f8?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=800&q=80"
-  },
-];
+import { 
+  analyzeStockWithAI, 
+  AIAnalysisResult 
+} from "@/services/geminiService";
 
-// Mock stock symbols for autocomplete
-const stockSymbols = [
-  { symbol: "AAPL", name: "Apple Inc." },
-  { symbol: "MSFT", name: "Microsoft Corporation" },
-  { symbol: "GOOGL", name: "Alphabet Inc." },
-  { symbol: "AMZN", name: "Amazon.com Inc." },
-  { symbol: "META", name: "Meta Platforms Inc." },
-  { symbol: "TSLA", name: "Tesla Inc." },
-  { symbol: "NVDA", name: "NVIDIA Corporation" },
-  { symbol: "JPM", name: "JPMorgan Chase & Co." },
-  { symbol: "V", name: "Visa Inc." },
-  { symbol: "WMT", name: "Walmart Inc." },
-];
+import { StockData, NewsItem } from "@/services/apiConfig";
 
-// Search history
-const searchHistory = [
-  "AAPL", "TSLA", "MSFT", "AMZN", "NVDA"
-];
+// Local storage keys
+const SEARCH_HISTORY_KEY = "financeai_search_history";
+
+// Interface for search results
+interface SearchResult {
+  symbol: string;
+  name: string;
+  exchange?: string;
+  type?: string;
+}
 
 const Analyzer = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -103,8 +57,63 @@ const Analyzer = () => {
   const [showResults, setShowResults] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [error, setError] = useState("");
-
-  const handleSearch = () => {
+  
+  // Data states
+  const [stockData, setStockData] = useState<StockData | null>(null);
+  const [chartData, setChartData] = useState<any[]>([]);
+  const [newsData, setNewsData] = useState<NewsItem[]>([]);
+  const [aiAnalysis, setAiAnalysis] = useState<AIAnalysisResult | null>(null);
+  const [technicalIndicators, setTechnicalIndicators] = useState<any[]>([]);
+  
+  // Search states
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [searchHistory, setSearchHistory] = useState<string[]>([]);
+  
+  // Load search history from localStorage on component mount
+  useEffect(() => {
+    const savedHistory = localStorage.getItem(SEARCH_HISTORY_KEY);
+    if (savedHistory) {
+      setSearchHistory(JSON.parse(savedHistory));
+    }
+  }, []);
+  
+  // Function to update search history
+  const updateSearchHistory = (symbol: string) => {
+    const updatedHistory = [
+      symbol,
+      ...searchHistory.filter(item => item !== symbol).slice(0, 4)
+    ];
+    setSearchHistory(updatedHistory);
+    localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(updatedHistory));
+  };
+  
+  // Handle search input change
+  const handleSearchChange = async (value: string) => {
+    setSearchQuery(value.toUpperCase());
+    setError("");
+    
+    if (value.length > 1) {
+      try {
+        const results = await searchStocks(value);
+        setSearchResults(results);
+        setShowSuggestions(true);
+      } catch (err) {
+        console.error("Error searching stocks:", err);
+        setSearchResults([]);
+      }
+    } else {
+      setSearchResults([]);
+    }
+  };
+  
+  // Handle stock selection
+  const selectStock = (symbol: string) => {
+    setSearchQuery(symbol);
+    setShowSuggestions(false);
+  };
+  
+  // Main analysis function
+  const handleSearch = async () => {
     if (!searchQuery) {
       setError("Please enter a stock symbol");
       return;
@@ -113,34 +122,73 @@ const Analyzer = () => {
     setError("");
     setIsAnalyzing(true);
     
-    // Simulate API call
-    setTimeout(() => {
-      setIsAnalyzing(false);
+    try {
+      // Fetch stock data
+      const stockQuote = await fetchStockQuote(searchQuery);
+      setStockData(stockQuote);
+      
+      // Fetch historical data for chart
+      const historicalData = await fetchHistoricalData(searchQuery, '1d', '1mo');
+      setChartData(historicalData);
+      
+      // Fetch news data
+      const newsItems = await fetchMarketNews([searchQuery]);
+      setNewsData(newsItems);
+      
+      // Fetch technical indicators
+      const indicators = await fetchTechnicalIndicators(searchQuery, 'RSI');
+      setTechnicalIndicators(indicators);
+      
+      // Get AI analysis
+      const analysis = await analyzeStockWithAI(
+        searchQuery,
+        stockQuote,
+        newsItems,
+        indicators
+      );
+      setAiAnalysis(analysis);
+      
+      // Update search history
+      updateSearchHistory(searchQuery);
+      
+      // Show results
       setShowResults(true);
       toast.success(`Analysis complete for ${searchQuery}`);
-    }, 1500);
+    } catch (err: any) {
+      console.error("Error analyzing stock:", err);
+      setError(err.message || "Failed to analyze stock. Please try again.");
+      toast.error(`Error: ${err.message || "Failed to analyze stock"}`);
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
-
+  
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
       handleSearch();
     }
   };
-
-  const filteredStocks = stockSymbols.filter(stock => 
-    stock.symbol.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    stock.name.toLowerCase().includes(searchQuery.toLowerCase())
-  ).slice(0, 5);
-
+  
   const clearSearch = () => {
     setSearchQuery("");
     setShowResults(false);
     setError("");
   };
-
-  const selectStock = (symbol: string) => {
-    setSearchQuery(symbol);
-    setShowSuggestions(false);
+  
+  // Format financial data for display
+  const formatFinancialData = () => {
+    if (!stockData) return [];
+    
+    return [
+      { metric: "Market Cap", value: stockData.marketCap ? `$${(stockData.marketCap / 1000000000).toFixed(2)}B` : "N/A" },
+      { metric: "Volume", value: stockData.volume ? stockData.volume.toLocaleString() : "N/A" },
+      { metric: "Avg. Volume", value: stockData.avgVolume ? stockData.avgVolume.toLocaleString() : "N/A" },
+      { metric: "High Today", value: stockData.high ? `$${stockData.high.toFixed(2)}` : "N/A" },
+      { metric: "Low Today", value: stockData.low ? `$${stockData.low.toFixed(2)}` : "N/A" },
+      { metric: "Open", value: stockData.open ? `$${stockData.open.toFixed(2)}` : "N/A" },
+      { metric: "Previous Close", value: stockData.previousClose ? `$${stockData.previousClose.toFixed(2)}` : "N/A" },
+      { metric: "Last Updated", value: stockData.timestamp ? new Date(stockData.timestamp * 1000).toLocaleString() : "N/A" },
+    ];
   };
 
   return (
@@ -165,11 +213,7 @@ const Analyzer = () => {
                     placeholder="Enter stock symbol (e.g., AAPL, MSFT)"
                     className="pl-10 pr-10"
                     value={searchQuery}
-                    onChange={(e) => {
-                      setSearchQuery(e.target.value.toUpperCase());
-                      setShowSuggestions(true);
-                      setError("");
-                    }}
+                    onChange={(e) => handleSearchChange(e.target.value)}
                     onKeyDown={handleKeyDown}
                     onFocus={() => setShowSuggestions(true)}
                     onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
@@ -188,9 +232,9 @@ const Analyzer = () => {
                 
                 {showSuggestions && searchQuery && (
                   <div className="absolute z-10 mt-1 w-full bg-background border rounded-md shadow-lg">
-                    {filteredStocks.length > 0 ? (
+                    {searchResults.length > 0 ? (
                       <>
-                        {filteredStocks.map((stock) => (
+                        {searchResults.map((stock) => (
                           <div 
                             key={stock.symbol}
                             className="p-2 hover:bg-accent cursor-pointer flex justify-between"
@@ -202,7 +246,9 @@ const Analyzer = () => {
                         ))}
                       </>
                     ) : (
-                      <div className="p-2 text-muted-foreground">No matching stocks found</div>
+                      searchQuery.length > 1 && (
+                        <div className="p-2 text-muted-foreground">No matching stocks found</div>
+                      )
                     )}
                   </div>
                 )}
@@ -271,27 +317,28 @@ const Analyzer = () => {
         </Card>
         
         {/* Analysis Results */}
-        {showResults && (
+        {showResults && stockData && aiAnalysis && (
           <div className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2">
                 <StockChart
-                  symbol={mockStockData.symbol}
-                  currentPrice={mockStockData.currentPrice}
-                  change={mockStockData.change}
-                  changePercent={mockStockData.changePercent}
+                  symbol={stockData.symbol}
+                  currentPrice={stockData.currentPrice}
+                  change={stockData.change}
+                  changePercent={stockData.changePercent}
+                  chartData={chartData}
                 />
               </div>
               <div>
                 <AIAnalysisCard
-                  symbol={mockStockData.symbol}
-                  companyName={mockStockData.companyName}
-                  recommendation={mockStockData.recommendation}
-                  confidenceScore={mockStockData.confidenceScore}
-                  shortTermOutlook={mockStockData.shortTermOutlook}
-                  longTermOutlook={mockStockData.longTermOutlook}
-                  riskLevel={mockStockData.riskLevel}
-                  keyFactors={mockStockData.keyFactors}
+                  symbol={stockData.symbol}
+                  companyName={stockData.companyName}
+                  recommendation={aiAnalysis.recommendation}
+                  confidenceScore={aiAnalysis.confidenceScore}
+                  shortTermOutlook={aiAnalysis.shortTermOutlook}
+                  longTermOutlook={aiAnalysis.longTermOutlook}
+                  riskLevel={aiAnalysis.riskLevel}
+                  keyFactors={aiAnalysis.keyFactors}
                 />
               </div>
             </div>
@@ -304,7 +351,7 @@ const Analyzer = () => {
                   </CardHeader>
                   <CardContent>
                     <div className="grid grid-cols-2 gap-4">
-                      {financialData.map((item) => (
+                      {formatFinancialData().map((item) => (
                         <div key={item.metric} className="space-y-1">
                           <p className="text-sm text-muted-foreground">{item.metric}</p>
                           <p className="font-medium">{item.value}</p>
@@ -321,19 +368,25 @@ const Analyzer = () => {
                   </CardHeader>
                   <CardContent>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {newsItems.map((news, index) => (
-                        <NewsCard
-                          key={index}
-                          title={news.title}
-                          source={news.source}
-                          time={news.time}
-                          summary={news.summary}
-                          sentiment={news.sentiment}
-                          category={news.category}
-                          relatedSymbols={news.relatedSymbols}
-                          imageUrl={news.imageUrl}
-                        />
-                      ))}
+                      {newsData.length > 0 ? (
+                        newsData.slice(0, 4).map((news, index) => (
+                          <NewsCard
+                            key={index}
+                            title={news.title}
+                            source={news.source}
+                            time={news.publishedTime}
+                            summary={news.summary}
+                            sentiment={news.sentiment || "neutral"}
+                            category={news.category || "Stock News"}
+                            relatedSymbols={news.relatedSymbols || [stockData.symbol]}
+                            imageUrl={news.imageUrl || "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80"}
+                          />
+                        ))
+                      ) : (
+                        <div className="col-span-2 text-center py-6 text-muted-foreground">
+                          No recent news available for {stockData.symbol}
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>

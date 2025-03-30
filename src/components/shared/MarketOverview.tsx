@@ -1,81 +1,111 @@
 
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowDown, ArrowUp, Clock } from "lucide-react";
+import { ArrowDown, ArrowUp, RefreshCw } from "lucide-react";
+import { fetchMarketIndices } from "@/services/yahooFinanceService";
+import { fetchSectorPerformance } from "@/services/alphaVantageService";
+import { MarketIndexData, SectorPerformance } from "@/services/apiConfig";
 
 export function MarketOverview() {
-  const markets = [
-    { name: "S&P 500", value: 4892.17, change: 0.87, status: "bull" },
-    { name: "NASDAQ", value: 15628.04, change: 1.12, status: "bull" },
-    { name: "DOW 30", value: 38671.32, change: 0.32, status: "bull" },
-    { name: "RUSSELL 2000", value: 1978.31, change: -0.42, status: "bear" },
-  ];
-
-  const sectorPerformance = [
-    { name: "Technology", value: 2.1 },
-    { name: "Healthcare", value: 0.8 },
-    { name: "Financials", value: 0.3 },
-    { name: "Energy", value: -1.2 },
-    { name: "Consumer", value: -0.5 },
-  ];
-
+  const [indices, setIndices] = useState<MarketIndexData[]>([]);
+  const [sectors, setSectors] = useState<SectorPerformance[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+  
+  const fetchData = async () => {
+    setIsLoading(true);
+    try {
+      const indicesData = await fetchMarketIndices();
+      setIndices(indicesData);
+      
+      try {
+        const sectorsData = await fetchSectorPerformance();
+        setSectors(sectorsData);
+      } catch (err) {
+        console.error("Error fetching sector data:", err);
+        // Use fallback data for sectors
+      }
+      
+      setLastUpdated(new Date());
+    } catch (err) {
+      console.error("Error fetching market data:", err);
+      // Use fallback data for indices
+      setIndices([
+        { symbol: "^GSPC", name: "S&P 500", value: 4,983.45, change: 12.16, changePercent: 0.24 },
+        { symbol: "^DJI", name: "Dow Jones", value: 38,797.35, change: -32.27, changePercent: -0.08 },
+        { symbol: "^IXIC", name: "NASDAQ", value: 15,973.17, change: 123.58, changePercent: 0.78 },
+      ]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // Initial data fetch
+  useEffect(() => {
+    fetchData();
+    
+    // Refresh data every 5 minutes
+    const intervalId = setInterval(fetchData, 5 * 60 * 1000);
+    
+    return () => clearInterval(intervalId);
+  }, []);
+  
+  const handleRefresh = () => {
+    fetchData();
+  };
+  
   return (
     <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle>Market Overview</CardTitle>
-          <div className="flex items-center text-sm text-muted-foreground">
-            <Clock className="mr-1 h-4 w-4" />
-            <span>Real-time</span>
-          </div>
+      <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <CardTitle>Market Overview</CardTitle>
+        <div className="flex items-center text-sm text-muted-foreground">
+          <span className="mr-2">Last updated: {lastUpdated.toLocaleTimeString()}</span>
+          <button 
+            onClick={handleRefresh} 
+            className="rounded-full p-1 hover:bg-muted transition-colors"
+            disabled={isLoading}
+          >
+            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+          </button>
         </div>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {markets.map((market) => (
-              <div key={market.name} className="space-y-1">
-                <div className="text-sm font-medium">{market.name}</div>
-                <div className="text-xl font-bold">{market.value.toLocaleString()}</div>
-                <div className={`flex items-center text-sm ${
-                  market.status === "bull" ? "text-finance-green" : "text-finance-red"
-                }`}>
-                  {market.status === "bull" ? (
-                    <ArrowUp className="mr-1 h-3 w-3" />
-                  ) : (
-                    <ArrowDown className="mr-1 h-3 w-3" />
-                  )}
-                  <span>{market.change > 0 ? "+" : ""}{market.change}%</span>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {indices.slice(0, 3).map((index) => (
+              <div key={index.symbol} className="bg-muted/40 p-3 rounded-lg">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="font-medium">{index.name}</h3>
+                    <p className="text-2xl font-bold mt-1">{index.value.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
+                  </div>
+                  <div className={`flex items-center ${index.changePercent >= 0 ? "text-finance-green" : "text-finance-red"}`}>
+                    {index.changePercent >= 0 ? (
+                      <ArrowUp className="h-4 w-4 mr-1" />
+                    ) : (
+                      <ArrowDown className="h-4 w-4 mr-1" />
+                    )}
+                    <span>
+                      {index.change.toFixed(2)} ({index.changePercent.toFixed(2)}%)
+                    </span>
+                  </div>
                 </div>
               </div>
             ))}
           </div>
           
-          <div className="pt-4">
-            <h4 className="text-sm font-medium mb-3">Sector Performance</h4>
-            <div className="space-y-3">
-              {sectorPerformance.map((sector) => {
-                const progressValue = 50 + (sector.value * 5);
-                const progressColor = sector.value >= 0 ? "bg-green-500" : "bg-red-500";
-                
-                return (
-                  <div key={sector.name} className="space-y-1">
-                    <div className="flex justify-between">
-                      <span className="text-sm">{sector.name}</span>
-                      <span className={`text-sm font-medium ${
-                        sector.value >= 0 ? "text-finance-green" : "text-finance-red"
-                      }`}>
-                        {sector.value > 0 ? "+" : ""}{sector.value}%
-                      </span>
-                    </div>
-                    <div className="relative h-2 w-full overflow-hidden rounded-full bg-gray-200">
-                      <div 
-                        className={`absolute h-full transition-all ${progressColor}`}
-                        style={{ width: `${progressValue}%` }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
+          <div className="space-y-3">
+            <h3 className="text-sm font-medium text-muted-foreground">Key Sectors</h3>
+            <div className="space-y-2">
+              {sectors.slice(0, 5).map((sector) => (
+                <div key={sector.name} className="flex justify-between items-center">
+                  <span>{sector.name}</span>
+                  <span className={sector.performance >= 0 ? "text-finance-green" : "text-finance-red"}>
+                    {sector.performance >= 0 ? "+" : ""}
+                    {sector.performance.toFixed(2)}%
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
         </div>
