@@ -5,10 +5,10 @@ import { ArrowDown, ArrowUp, Clock } from "lucide-react";
 
 export function MarketOverview() {
   const markets = [
-    { name: "S&P 500", value: 4,892.17, change: 0.87, status: "bull" },
-    { name: "NASDAQ", value: 15,628.04, change: 1.12, status: "bull" },
-    { name: "DOW 30", value: 38,671.32, change: 0.32, status: "bull" },
-    { name: "RUSSELL 2000", value: 1,978.31, change: -0.42, status: "bear" },
+    { name: "S&P 500", value: 4892.17, change: 0.87, status: "bull" },
+    { name: "NASDAQ", value: 15628.04, change: 1.12, status: "bull" },
+    { name: "DOW 30", value: 38671.32, change: 0.32, status: "bull" },
+    { name: "RUSSELL 2000", value: 1978.31, change: -0.42, status: "bear" },
   ];
 
   const sectorPerformance = [
