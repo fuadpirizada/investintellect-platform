@@ -69,9 +69,8 @@ export function MarketOverview() {
                     max={100}
                     className={`h-2 ${
                       sector.value >= 0 ? "bg-finance-dark-blue" : "bg-finance-dark-blue"
-                    }`}
-                    indicatorClassName={`${
-                      sector.value >= 0 ? "bg-finance-green" : "bg-finance-red"
+                    } ${
+                      sector.value >= 0 ? "data-[value]:bg-finance-green" : "data-[value]:bg-finance-red"
                     }`}
                   />
                 </div>
