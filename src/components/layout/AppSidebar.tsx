@@ -88,10 +88,8 @@ export function AppSidebar() {
               </div>
             )}
             {!expanded && <BarChart3 className="h-6 w-6 text-accent" />}
-            <SidebarTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <Menu className="h-5 w-5" />
-              </Button>
+            <SidebarTrigger>
+              <Menu className="h-5 w-5" />
             </SidebarTrigger>
           </div>
         </div>
