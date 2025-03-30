@@ -31,9 +31,9 @@ export function MarketOverview() {
       console.error("Error fetching market data:", err);
       // Use fallback data for indices
       setIndices([
-        { symbol: "^GSPC", name: "S&P 500", value: 4,983.45, change: 12.16, changePercent: 0.24 },
-        { symbol: "^DJI", name: "Dow Jones", value: 38,797.35, change: -32.27, changePercent: -0.08 },
-        { symbol: "^IXIC", name: "NASDAQ", value: 15,973.17, change: 123.58, changePercent: 0.78 },
+        { symbol: "^GSPC", name: "S&P 500", value: 4983.45, change: 12.16, changePercent: 0.24 },
+        { symbol: "^DJI", name: "Dow Jones", value: 38797.35, change: -32.27, changePercent: -0.08 },
+        { symbol: "^IXIC", name: "NASDAQ", value: 15973.17, change: 123.58, changePercent: 0.78 },
       ]);
     } finally {
       setIsLoading(false);
