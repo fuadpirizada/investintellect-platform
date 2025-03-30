@@ -77,7 +77,7 @@ export function AppSidebar() {
   ];
 
   return (
-    <Sidebar defaultExpanded={expanded} className="border-r">
+    <Sidebar className="border-r">
       <SidebarHeader>
         <div className="flex items-center px-2 py-4">
           <div className={cn("transition-all flex items-center", expanded ? "justify-between w-full" : "justify-center")}>
