@@ -13,7 +13,7 @@ export function PageLayout({ children }: PageLayoutProps) {
     <SidebarProvider>
       <div className="min-h-screen w-full flex">
         <AppSidebar />
-        <div className="flex-1">
+        <div className="flex-1 pl-16">
           <Navbar />
           <main className="p-4 md:p-6 max-w-full overflow-x-hidden">
             {children}

@@ -1,88 +1,87 @@
 
-// This is a placeholder for the Gemini API service
-// In a real implementation, you would use the Google Gemini API
+// Update to use the provided Gemini API key
+const API_KEY = "AIzaSyCzCrpXvgkjXMfoslDCCoBOBxNrbcaQDl8";
 
-export interface AIAnalysisResult {
-  recommendation: 'buy' | 'sell' | 'hold' | 'strongBuy' | 'strongSell';
-  confidenceScore: number;
-  shortTermOutlook: string;
-  longTermOutlook: string;
-  riskLevel: 'low' | 'medium' | 'high';
-  keyFactors: string[];
-  timestamp: number;
+interface GeminiRequest {
+  contents: Array<{
+    parts: Array<{
+      text: string;
+    }>;
+  }>;
 }
 
-export const analyzeStockWithAI = async (
+interface GeminiResponse {
+  candidates: Array<{
+    content: {
+      parts: Array<{
+        text: string;
+      }>;
+    };
+  }>;
+}
+
+export async function analyzeStockWithGemini(
   symbol: string,
   stockData: any,
-  newsData: any,
-  technicalData: any
-): Promise<AIAnalysisResult> => {
+  news: any
+): Promise<string> {
   try {
-    // In a real implementation, you would send data to Gemini API
-    // and parse the response
-    
-    console.log('Sending data to Gemini for analysis:', {
-      symbol,
-      stockData,
-      newsData,
-      technicalData,
-    });
-    
-    // For now, return mock data based on the input
-    const isPositive = stockData.change > 0;
-    const isMajorPositive = stockData.changePercent > 2;
-    const isMajorNegative = stockData.changePercent < -2;
-    
-    let recommendation: AIAnalysisResult['recommendation'];
-    let confidenceScore: number;
-    let riskLevel: AIAnalysisResult['riskLevel'];
-    
-    if (isMajorPositive) {
-      recommendation = 'strongBuy';
-      confidenceScore = 80 + Math.random() * 15;
-      riskLevel = 'low';
-    } else if (isPositive) {
-      recommendation = 'buy';
-      confidenceScore = 65 + Math.random() * 15;
-      riskLevel = 'medium';
-    } else if (isMajorNegative) {
-      recommendation = 'strongSell';
-      confidenceScore = 75 + Math.random() * 15;
-      riskLevel = 'high';
-    } else {
-      recommendation = 'hold';
-      confidenceScore = 50 + Math.random() * 25;
-      riskLevel = 'medium';
-    }
-    
-    // Generate key factors based on the data
-    const keyFactors = [
-      isPositive ? `Positive price momentum of ${stockData.changePercent.toFixed(2)}%` : 
-                   `Negative price trend of ${stockData.changePercent.toFixed(2)}%`,
-      `Current trading volume: ${stockData.volume || 'unknown'}`,
-      `Current market conditions favor ${isPositive ? 'bullish' : 'bearish'} outlook`,
-      newsData && newsData.length > 0 ? `Recent news suggests ${isPositive ? 'positive' : 'mixed'} sentiment` : 
-                                      'Limited recent news coverage',
-      technicalData ? `Technical indicators show ${isPositive ? 'strength' : 'weakness'}` : 
-                     'Technical analysis is inconclusive',
-    ];
-    
-    return {
-      recommendation,
-      confidenceScore,
-      shortTermOutlook: isPositive 
-        ? `${symbol} shows positive momentum in the short term with potential for continued growth based on recent performance and market conditions.`
-        : `${symbol} faces short-term challenges that may impact performance, suggesting caution in the immediate future.`,
-      longTermOutlook: isPositive
-        ? `The long-term outlook for ${symbol} remains positive with strong fundamentals and market position supporting sustained growth potential.`
-        : `Despite current challenges, ${symbol}'s long-term prospects depend on broader market recovery and company-specific developments.`,
-      riskLevel,
-      keyFactors,
-      timestamp: Date.now(),
+    // Format the data for Gemini
+    const prompt = `
+      Analyze this stock data for ${symbol}:
+      
+      Price data:
+      ${JSON.stringify(stockData, null, 2)}
+      
+      Recent news:
+      ${JSON.stringify(news, null, 2)}
+      
+      Provide a concise recommendation (buy/sell/hold/short/long) with 1-3 sentence rationale based on technicals, fundamentals, and news sentiment.
+    `;
+
+    const requestBody: GeminiRequest = {
+      contents: [
+        {
+          parts: [
+            {
+              text: prompt,
+            },
+          ],
+        },
+      ],
     };
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${API_KEY}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(requestBody),
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Gemini API returned ${response.status}`);
+    }
+
+    const data: GeminiResponse = await response.json();
+
+    // Extract the text from the response
+    if (
+      data.candidates &&
+      data.candidates[0] &&
+      data.candidates[0].content &&
+      data.candidates[0].content.parts &&
+      data.candidates[0].content.parts[0]
+    ) {
+      return data.candidates[0].content.parts[0].text;
+    } else {
+      throw new Error("Unexpected Gemini API response format");
+    }
   } catch (error) {
-    console.error('Error analyzing stock with AI:', error);
-    throw error;
+    console.error("Error in Gemini analysis:", error);
+    return "Unable to generate analysis at this time. Please try again later.";
   }
-};
+}

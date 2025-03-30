@@ -38,7 +38,7 @@ const sidebarItems = [
 ];
 
 export function AppSidebar() {
-  const { isExpanded, setIsExpanded } = useSidebar();
+  const { open, setOpen } = useSidebar(); // Use the correct properties from context
   const [isHovered, setIsHovered] = useState(false);
   const [sectionExpanded, setSectionExpanded] = useState(true);
   const location = useLocation();
@@ -56,7 +56,7 @@ export function AppSidebar() {
   return (
     <div
       className={`app-sidebar fixed left-0 top-0 z-30 flex h-full flex-col border-r bg-background transition-all duration-300 ${
-        isExpanded ? "w-60" : "w-16"
+        open ? "w-60" : "w-16"
       }`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
@@ -66,17 +66,17 @@ export function AppSidebar() {
           variant="ghost"
           size="icon"
           className="mr-2"
-          onClick={() => setIsExpanded(!isExpanded)}
+          onClick={() => setOpen(!open)}
         >
           <ChevronRight
             className={`h-5 w-5 transition-all duration-300 ${
-              isExpanded ? "rotate-180" : ""
+              open ? "rotate-180" : ""
             }`}
           />
         </Button>
         <h2
           className={`ml-2 text-lg font-semibold transition-opacity duration-200 ${
-            isExpanded ? "opacity-100" : "opacity-0"
+            open ? "opacity-100" : "opacity-0"
           }`}
         >
           FinanceAI
@@ -99,14 +99,14 @@ export function AppSidebar() {
                     <item.icon className="mr-3 h-5 w-5" />
                     <span
                       className={`transition-opacity duration-200 ${
-                        isExpanded ? "opacity-100" : "opacity-0"
+                        open ? "opacity-100" : "opacity-0"
                       }`}
                     >
                       {item.name}
                     </span>
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="right" className={isExpanded ? "hidden" : ""}>
+                <TooltipContent side="right" className={open ? "hidden" : ""}>
                   {item.name}
                 </TooltipContent>
               </Tooltip>
@@ -128,7 +128,7 @@ export function AppSidebar() {
                 <Compass className="mr-3 h-5 w-5" />
                 <span
                   className={`flex-1 transition-opacity duration-200 ${
-                    isExpanded ? "opacity-100" : "opacity-0"
+                    open ? "opacity-100" : "opacity-0"
                   }`}
                 >
                   Discover
@@ -136,12 +136,12 @@ export function AppSidebar() {
                 <ChevronDown
                   className={`h-4 w-4 transition-transform ${
                     sectionExpanded ? "rotate-180" : ""
-                  } ${isExpanded ? "opacity-100" : "opacity-0"}`}
+                  } ${open ? "opacity-100" : "opacity-0"}`}
                 />
               </Button>
             </CollapsibleTrigger>
             <CollapsibleContent className="space-y-1.5">
-              {isExpanded && (
+              {open && (
                 <>
                   <Button
                     variant="ghost"
